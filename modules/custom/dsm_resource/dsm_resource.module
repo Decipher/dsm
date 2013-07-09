@@ -1,0 +1,88 @@
+<?php
+/**
+ * @file
+ * Core functionality for DSM Resource.
+ */
+
+/**
+ * Implements hook_services_resources().
+ */
+function dsm_resource_services_resources() {
+  $items = array();
+
+  $items['dsm_resource'] = array(
+    // Operations: CRUD resources.
+    'operations' => array(
+      'retrieve' => array(
+        'help' => 'Example CRUD retrieve resource',
+        'callback' => 'dsm_resource_resource_retrieve',
+        'access callback' => 'user_access',
+        'access arguments' => array('access content'),
+        // 'access arguments append' => TRUE,
+        'args' => array(
+          array(
+            'name' => 'id',
+            'type' => 'int',
+            'description' => 'The id of the thing we are retrieving.',
+            'source' => array('path' => '0'),
+            'optional' => FALSE,
+          ),
+        ),
+      ),
+
+      'index' => array(
+        'help' => 'Example CRUD index resource',
+        'callback' => 'dsm_resource_resource_index',
+        'access callback' => 'user_access',
+        'access arguments' => array('access content'),
+        'args' => array(),
+      ),
+    ),
+
+    // Actions.
+    'actions' => array(
+      'pirate' => array(
+        'help'   => t('Piratize the sent text.'),
+        'access callback' => 'user_access',
+        'access arguments' => array('access content'),
+        'callback' => 'dsm_resource_resource_pirate',
+        'args' => array(
+          array(
+            'name' => 'text',
+            'type' => 'string',
+            'description' => t('The text to piratize.'),
+            'source' => array('data' => 'text'),
+            'optional' => FALSE,
+          ),
+        ),
+      ),
+    ),
+  );
+
+  return $items;
+}
+
+/**
+ * Callback for 'retrieve' operation resource.
+ */
+function dsm_resource_resource_retrieve($id) {
+  return t('Hello world! You asked for ID @id.', array('@id' => $id));
+}
+
+/**
+ * Callback for 'index' operation resource.
+ */
+function dsm_resource_resource_index() {
+  return t('Hello world! You asked for an index of all data.');
+}
+
+/**
+ * Callback for 'pirate' action resource.
+ */
+function dsm_resource_resource_pirate($text) {
+  $response = drupal_http_request('http://isithackday.com/arrpi.php?text=' . urlencode($text));
+  if ($response->code == 200) {
+    return $response->data;
+  }
+  return t('FAIL');
+}

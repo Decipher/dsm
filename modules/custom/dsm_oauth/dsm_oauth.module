@@ -1,0 +1,152 @@
+<?php
+/**
+ * @file
+ * Code for the DSM OAuth feature feature.
+ */
+
+/**
+ * Constants.
+ */
+define('DSM_OAUTH_CONSUMER_KEY', '');
+define('DSM_OAUTH_CONSUMER_SECRET', '');
+define('DSM_OAUTH_TOKEN_KEY', '');
+define('DSM_OAUTH_TOKEN_SECRET', '');
+
+/**
+ * Features include,
+ */
+include_once 'dsm_oauth.features.inc';
+
+/**
+ * Implements hook_menu().
+ */
+function dsm_oauth_menu() {
+  $items = array();
+
+  $items['api-request-authorize'] = array(
+    'page callback' => 'dsm_oauth_api_request_authorize',
+    'access callback' => TRUE,
+  );
+
+  $items['api-success'] = array(
+    'page callback' => 'dsm_oauth_api_success',
+    'access callback' => TRUE,
+  );
+
+  $items['api-test'] = array(
+    'page callback' => 'dsm_oauth_api_test',
+    'access callback' => TRUE,
+  );
+
+  return $items;
+}
+
+/**
+ * Build OAuth URLs.
+ */
+function dsm_oauth_url($path, $method, $params = array(), $oauth_token_key = NULL, $oauth_token_secret = NULL) {
+  $url = url($path, array('absolute' => TRUE));
+  $parameters = array(
+    'oauth_consumer_key' => DSM_OAUTH_CONSUMER_KEY,
+    'oauth_nonce' => user_password(),
+    'oauth_signature_method' => 'HMAC-SHA1',
+    'oauth_timestamp' => REQUEST_TIME,
+    'q' => $path,
+  ) + $params;
+
+  if ($oauth_token_key) {
+    $parameters['oauth_token'] = $oauth_token_key;
+  }
+  ksort($parameters);
+
+  $base_string = implode('&', array(
+    $method,
+    urlencode($url),
+    urlencode(drupal_http_build_query($parameters)),
+  ));
+  $base_string = str_replace('q%3D' . urlencode($path), 'q%3D' . urlencode(urlencode($path)), $base_string);
+
+  $parameters['oauth_signature'] = base64_encode(
+    hash_hmac('sha1', $base_string, DSM_OAUTH_CONSUMER_SECRET . '&' . $oauth_token_secret, TRUE)
+  );
+
+  return url($path, array(
+    'absolute' => TRUE,
+    'query' => $parameters
+  ));
+}
+
+/**
+ * Redirect user to Request Authorization URL.
+ */
+function dsm_oauth_api_request_authorize() {
+  if (DSM_OAUTH_CONSUMER_KEY == '') {
+    return t('Consumer key and/or secret not defined.');
+  }
+
+  $url = dsm_oauth_url('oauth/request_token', 'POST');
+  $request = drupal_http_request($url, array('method' => 'POST'));
+  if ($request->code == 200) {
+    // Get the Oauth request token and secret.
+    foreach (explode('&', $request->data) as $data) {
+      list($key, $value) = explode('=', trim($data));
+      $$key = $value;
+    }
+
+    // Create authorize url.
+    $url = url('oauth/authorize', array(
+      'absolute' => TRUE,
+      'query' => array(
+        'oauth_consumer_key' => DSM_OAUTH_CONSUMER_KEY,
+        'oauth_token' => $oauth_token,
+      )
+    ));
+    drupal_goto($url);
+  }
+
+  return '';
+}
+
+/**
+ * Display OAuth Token key and secret to user.
+ */
+function dsm_oauth_api_success() {
+  global $base_url;
+
+  $oauth_token_key = trim($_GET['oauth_token']);
+  $oauth_token_secret = trim($_GET['oauth_token_secret']);
+
+  if ($oauth_token_key && $oauth_token_secret) {
+    $url = dsm_oauth_url('oauth/access_token', 'POST', array(), $oauth_token_key, $oauth_token_secret);
+    $request = drupal_http_request($url, array('method' => 'POST'));
+
+    if ($request->code == 200) {
+      foreach (explode('&', $request->data) as $data) {
+        list($key, $value) = explode('=', trim($data));
+        $$key = $value;
+      }
+
+      if ($oauth_token && $oauth_token_secret) {
+        $element = array(
+          'oauth_token' => array(
+            '#title' => t('OAuth token key'),
+            '#type' => 'item',
+            '#markup' => $oauth_token,
+          ),
+          'oauth_token_secret' => array(
+            '#title' => t('OAuth token secret'),
+            '#type' => 'item',
+            '#markup' => $oauth_token_secret,
+          ),
+        );
+        return render($element);
+      }
+    }
+  }
+
+  return '';
+}
+
+function dsm_oauth_api_test() {
+
+}

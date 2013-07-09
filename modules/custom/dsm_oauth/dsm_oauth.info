@@ -1,0 +1,16 @@
+name = DSM OAuth feature
+description = OAuth feature for Drupal Services Me ;)
+core = 7.x
+package = Drupal Services Me ;)
+php = 5.2.4
+version = 7.x-1.0
+project = dsm_oauth
+dependencies[] = ctools
+dependencies[] = oauth_common
+dependencies[] = oauth_common_providerui
+dependencies[] = services
+features[ctools][] = oauth_common:oauth:1
+features[ctools][] = services:services:3
+features[features_api][] = api:2
+features[oauth_common_context][] = api
+features[services_endpoint][] = dsm_oauth

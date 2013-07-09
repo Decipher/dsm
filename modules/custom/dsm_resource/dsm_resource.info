@@ -1,0 +1,4 @@
+name = DSM Resource
+description = An example Services resource for the Drupal Services Me ;) demonstration.
+package = Drupal Services Me ;)
+core = 7.x
